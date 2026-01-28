@@ -1,9 +1,9 @@
-
 export enum AppMode {
   CHAT = 'chat',
   PLANNER = 'planner',
   SUPPLIERS = 'suppliers',
-  GUESTS = 'guests'
+  GUESTS = 'guests',
+  IMAGES = 'images'
 }
 
 export interface GroundingSource {
@@ -34,10 +34,9 @@ export interface Guest {
   notified: boolean;
 }
 
-// Added GeneratedAsset interface to resolve errors in ImageSection and VideoSection
 export interface GeneratedAsset {
   id: string;
-  type: 'image' | 'video';
+  type: 'image';
   url: string;
   prompt: string;
   timestamp: number;

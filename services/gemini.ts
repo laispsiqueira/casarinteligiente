@@ -131,27 +131,6 @@ export class GeminiService {
     }
     throw new Error("Falha na materialização visual.");
   }
-
-  async generateVideo(prompt: string, onProgress: (msg: string) => void): Promise<string> {
-    onProgress('Vanessa está estruturando a visão cinematográfica...');
-    let operation = await this.getAI().models.generateVideos({
-      model: 'veo-3.1-fast-generate-preview',
-      prompt,
-      config: { numberOfVideos: 1, resolution: '1080p', aspectRatio: '16:9' }
-    });
-
-    while (!operation.done) {
-      onProgress('Processando com critério e qualidade...');
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      operation = await this.getAI().operations.getVideosOperation({ operation: operation });
-    }
-
-    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-    if (!downloadLink) throw new Error("A produção falhou.");
-    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  }
 }
 
 export const gemini = new GeminiService();

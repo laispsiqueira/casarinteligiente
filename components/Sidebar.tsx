@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppMode } from '../types';
-import { Users, CheckSquare, Briefcase, Settings, Heart, MessageSquareMore } from 'lucide-react';
+import { Users, CheckSquare, Briefcase, Settings, Heart, MessageSquareMore, Sparkles } from 'lucide-react';
 
 interface SidebarProps {
   currentMode: AppMode;
@@ -10,6 +10,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentMode, onModeChange }) => {
   const navItems = [
     { id: AppMode.CHAT, icon: MessageSquareMore, label: 'Consultoria Vanessa', color: 'text-[#ED8932]' },
+    { id: AppMode.IMAGES, icon: Sparkles, label: 'Estúdio de Design', color: 'text-[#ED8932]' },
     { id: AppMode.PLANNER, icon: CheckSquare, label: 'Meu Planejamento', color: 'text-[#ED8932]' },
     { id: AppMode.GUESTS, icon: Users, label: 'Convidados & RSVP', color: 'text-[#ED8932]' },
     { id: AppMode.SUPPLIERS, icon: Briefcase, label: 'Fornecedores', color: 'text-[#ED8932]' },
