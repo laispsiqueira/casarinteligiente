@@ -10,6 +10,7 @@ import GuestSection from './components/GuestSection';
 import ImageSection from './components/ImageSection';
 import AccountSection from './components/AccountSection';
 import DashboardSection from './components/DashboardSection';
+import UpgradeSection from './components/UpgradeSection';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { Layout } from './shared/components/Layout';
 import { LogOut, Eye } from 'lucide-react';
@@ -37,13 +38,14 @@ const MainContent: React.FC = () => {
   const { mode, setMode } = useWedding();
   
   const sections: Record<AppMode, React.ReactNode> = {
-    [AppMode.CHAT]: <ChatSection />,
-    [AppMode.DASHBOARD]: <DashboardSection />,
-    [AppMode.PLANNER]: <PlannerSection />,
-    [AppMode.SUPPLIERS]: <SupplierSection />,
-    [AppMode.GUESTS]: <GuestSection />,
     [AppMode.IMAGES]: <ImageSection />,
+    [AppMode.CHAT]: <ChatSection />,
+    [AppMode.PLANNER]: <PlannerSection />,
+    [AppMode.GUESTS]: <GuestSection />,
+    [AppMode.SUPPLIERS]: <SupplierSection />,
+    [AppMode.DASHBOARD]: <DashboardSection />,
     [AppMode.ACCOUNT]: <AccountSection />,
+    [AppMode.UPGRADE]: <UpgradeSection />,
   };
 
   return (

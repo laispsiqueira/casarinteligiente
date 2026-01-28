@@ -1,7 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { GroundingSource, Message } from "../types";
-import { config } from "../core/config/env";
 import { geminiRateLimiter } from "../shared/utils/rateLimiter";
 
 const VANESSA_SYSTEM_INSTRUCTION = `
@@ -12,8 +11,9 @@ const VANESSA_SYSTEM_INSTRUCTION = `
 
 export class GeminiService {
   private getAI() {
-    // Always use named parameter for apiKey and ensure it uses process.env.API_KEY
-    return new GoogleGenAI({ apiKey: config.gemini.apiKey });
+    // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+    // Must use new GoogleGenAI({ apiKey: process.env.API_KEY }).
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async chatStream(
@@ -25,16 +25,18 @@ export class GeminiService {
     return geminiRateLimiter.execute(async () => {
       const ai = this.getAI();
       
-      const recentHistory = history.slice(-6).map(m => ({
+      const recentHistory = history.slice(-10).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }]
       }));
 
       let parts: any[] = [{ text: prompt }];
       if (imageBase64) {
-        const data = imageBase64.split(',')[1] || imageBase64;
-        const mimeType = imageBase64.includes(',') ? imageBase64.split(',')[0].split(':')[1].split(';')[0] : 'image/png';
-        parts.unshift({ inlineData: { data, mimeType } });
+        try {
+          const data = imageBase64.split(',')[1] || imageBase64;
+          const mimeType = imageBase64.includes(',') ? imageBase64.split(',')[0].split(':')[1].split(';')[0] : 'image/png';
+          parts.unshift({ inlineData: { data, mimeType } });
+        } catch (e) { console.error("Falha ao processar imagem", e); }
       }
 
       const responseStream = await ai.models.generateContentStream({
@@ -50,7 +52,7 @@ export class GeminiService {
       let sources: GroundingSource[] = [];
 
       for await (const chunk of responseStream) {
-        // Use .text property, not .text() method
+        // Correct method to extract text: use .text property, not .text() method.
         const textChunk = chunk.text || '';
         fullText += textChunk;
         if (onChunk) onChunk(fullText);
@@ -67,7 +69,6 @@ export class GeminiService {
     });
   }
 
-  // Implementation of missing searchSuppliers method using Google Search Grounding
   async searchSuppliers(query: string): Promise<{ text: string, sources: GroundingSource[] }> {
     return geminiRateLimiter.execute(async () => {
       const ai = this.getAI();
@@ -80,7 +81,6 @@ export class GeminiService {
         }
       });
 
-      // Use .text property, not .text() method
       const text = response.text || '';
       const sources: GroundingSource[] = [];
       const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -100,7 +100,7 @@ export class GeminiService {
       const ai = this.getAI();
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Vanessa, como consultora, elabore um roteiro com critério para: ${goal}.`,
+        contents: `Vanessa, elabore um roteiro com critério técnico para: ${goal}.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -117,8 +117,9 @@ export class GeminiService {
           systemInstruction: VANESSA_SYSTEM_INSTRUCTION
         }
       });
-      // Use .text property, not .text() method
-      return JSON.parse(response.text || "[]");
+      try {
+        return JSON.parse(response.text || "[]");
+      } catch { return []; }
     });
   }
 
@@ -130,15 +131,21 @@ export class GeminiService {
       config: { imageConfig: { aspectRatio } },
     });
 
-    // Iterate through all candidates and parts to find the image data
-    for (const candidate of response.candidates || []) {
-      for (const part of candidate.content.parts || []) {
-        if (part.inlineData) {
-          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+    if (!response.candidates || response.candidates.length === 0) {
+      throw new Error("Nenhum candidato retornado pelo modelo.");
+    }
+
+    for (const candidate of response.candidates) {
+      // Fix: Ensure candidate.content and candidate.content.parts exist before accessing
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          if (part.inlineData) {
+            return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+          }
         }
       }
     }
-    throw new Error("Falha na geração.");
+    throw new Error("Falha na geração de imagem: conteúdo não encontrado ou bloqueado por filtros de segurança.");
   }
 }
 

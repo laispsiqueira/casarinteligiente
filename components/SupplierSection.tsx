@@ -1,16 +1,26 @@
 
 import React, { useState } from 'react';
 import { gemini } from '../services/gemini';
-import { GroundingSource } from '../types';
-import { Search, MapPin, ExternalLink, Briefcase, Loader2, Star, Globe } from 'lucide-react';
+import { GroundingSource, AppMode } from '../types';
+import { useWedding } from '../context/WeddingContext';
+import { Search, MapPin, ExternalLink, Briefcase, Loader2, Star, Globe, Lock } from 'lucide-react';
 
 const SupplierSection: React.FC = () => {
+  const { user, setMode } = useWedding();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ text: string, sources: GroundingSource[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isRestricted = user.role === 'Assessor Free';
+
   const handleSearch = async () => {
     if (!query.trim()) return;
+    
+    if (isRestricted) {
+      setMode(AppMode.UPGRADE);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const data = await gemini.searchSuppliers(query);
@@ -23,7 +33,15 @@ const SupplierSection: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto w-full px-6 py-10 overflow-hidden">
+    <div className="flex flex-col h-full max-w-5xl mx-auto w-full px-6 py-10 overflow-hidden relative">
+      {isRestricted && (
+        <div className="absolute top-0 right-0 p-8 z-10">
+          <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-xl text-amber-500 text-xs font-bold flex items-center gap-2">
+            <Lock className="w-3 h-3" /> Assessor Free: Funcionalidade Restrita
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1 mb-10">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
           <Briefcase className="text-amber-400" />

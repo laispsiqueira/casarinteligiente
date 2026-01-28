@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Task, Guest, Message, GeneratedAsset, AppMode, UserProfile, Invoice, ClientData, UserRole } from '../types';
 import { db } from '../services/db';
@@ -33,7 +34,7 @@ const INITIAL_MOCK_USERS: UserProfile[] = [
   {
     id: 'user_admin',
     name: 'Lais Siqueira',
-    email: 'lais.siqueira@exemplo.com',
+    email: 'adm@exemplo.com',
     role: 'Administrador',
     plan: 'Enterprise',
     createdAt: Date.now() - 10000000000,
@@ -41,15 +42,15 @@ const INITIAL_MOCK_USERS: UserProfile[] = [
   {
     id: 'user_assessor_01',
     name: 'Carlos Eduardo',
-    email: 'carlos.assessor@exemplo.com',
-    role: 'Assessor',
-    plan: 'Enterprise',
+    email: 'assesor@exemplo.com',
+    role: 'Assessor Free',
+    plan: 'Free',
     createdAt: Date.now() - 5000000000,
   },
   {
     id: 'user_plus_01',
     name: 'Roberto & Julia',
-    email: 'roberto.julia@plus.com',
+    email: 'roberto.julia@exemplo.com',
     role: 'Noivo+',
     plan: 'Simplifier',
     createdAt: Date.now() - 3000000000,
@@ -58,8 +59,8 @@ const INITIAL_MOCK_USERS: UserProfile[] = [
   },
   {
     id: 'user_free_01',
-    name: 'Juliana & Felipe',
-    email: 'juliana.felipe@free.com',
+    name: 'Maria Clara',
+    email: 'noivofree@exemplo.com',
     role: 'Noivo Free',
     plan: 'Free',
     createdAt: Date.now() - 1000000000,
@@ -73,32 +74,39 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [guests, setGuests] = useState<Guest[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
-  const [mode, setMode] = useState<AppMode>(AppMode.CHAT);
+  const [mode, setMode] = useState<AppMode>(AppMode.IMAGES);
   const [pendingInspiration, setPendingInspiration] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const saved = localStorage.getItem('ci_theme');
-    return (saved as 'dark' | 'light') || 'dark';
+    try {
+      const saved = localStorage.getItem('ci_theme');
+      return (saved as 'dark' | 'light') || 'dark';
+    } catch { return 'dark'; }
   });
 
   const [availableUsers, setAvailableUsers] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem('ci_available_users');
-    return saved ? JSON.parse(saved) : INITIAL_MOCK_USERS;
+    try {
+      const saved = localStorage.getItem('ci_available_users');
+      return saved ? JSON.parse(saved) : INITIAL_MOCK_USERS;
+    } catch { return INITIAL_MOCK_USERS; }
   });
 
   const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('ci_current_user');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Sync with availableUsers in case of edits
-      const updated = availableUsers.find(u => u.id === parsed.id);
-      return updated || parsed;
-    }
+    try {
+      const saved = localStorage.getItem('ci_current_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const updated = availableUsers.find(u => u.id === parsed.id);
+        return updated || parsed;
+      }
+    } catch (e) { console.error("Error loading current user", e); }
     return availableUsers[0];
   });
 
   const [originalAdmin, setOriginalAdmin] = useState<UserProfile | null>(() => {
-    const saved = localStorage.getItem('ci_original_admin');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('ci_original_admin');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -131,47 +139,27 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     const loadData = async () => {
-      const savedTasks = localStorage.getItem('ci_tasks');
-      const savedGuests = localStorage.getItem('ci_guests');
-      
-      if (savedTasks) setTasks(JSON.parse(savedTasks));
-      if (savedGuests) setGuests(JSON.parse(savedGuests));
-      else setGuests([
-        { id: '1', name: 'Maria Silva', status: 'Confirmado', notified: true },
-        { id: '2', name: 'João Souza', status: 'Pendente', notified: false },
-      ]);
+      try {
+        const savedTasks = localStorage.getItem('ci_tasks');
+        const savedGuests = localStorage.getItem('ci_guests');
+        
+        if (savedTasks) setTasks(JSON.parse(savedTasks));
+        if (savedGuests) setGuests(JSON.parse(savedGuests));
 
-      const savedMessages = await db.load<Message[]>('ci_messages');
-      const savedAssets = await db.load<GeneratedAsset[]>('ci_assets');
-      const savedInvoices = await db.load<Invoice[]>('ci_invoices');
-      const savedClients = await db.load<ClientData[]>('ci_clients');
+        const savedMessages = await db.load<Message[]>('ci_messages');
+        const savedAssets = await db.load<GeneratedAsset[]>('ci_assets');
+        const savedInvoices = await db.load<Invoice[]>('ci_invoices');
+        const savedClients = await db.load<ClientData[]>('ci_clients');
 
-      if (savedMessages) setMessages(savedMessages);
-      if (savedAssets) setAssets(savedAssets);
-      
-      if (savedInvoices) {
-        setInvoices(savedInvoices);
-      } else {
-        const initialInvoices: Invoice[] = [
-          { id: 'INV-001', userId: 'user_plus_01', date: Date.now() - 2592000000, amount: 500, status: 'Pago', planName: 'Simplifier', method: 'PIX' },
-          { id: 'INV-002', userId: 'user_plus_01', date: Date.now() - 86400000, amount: 700, status: 'Pendente', planName: 'Mentoria Extra', method: 'Cartão de Crédito' }
-        ];
-        setInvoices(initialInvoices);
-        db.save('ci_invoices', initialInvoices);
+        if (savedMessages) setMessages(savedMessages);
+        if (savedAssets) setAssets(savedAssets);
+        if (savedInvoices) setInvoices(savedInvoices);
+        if (savedClients) setClients(savedClients);
+      } catch (err) {
+        console.error("Falha ao carregar dados salvos:", err);
+      } finally {
+        setIsLoaded(true);
       }
-
-      if (savedClients) {
-        setClients(savedClients);
-      } else {
-        const initialClients: ClientData[] = [
-          { id: 'C-01', coupleNames: 'Roberto & Julia', status: 'Ativo', contractValue: 2500, nextPayment: Date.now() + 604800000 },
-          { id: 'C-02', coupleNames: 'Juliana & Felipe', status: 'Ativo', contractValue: 1800 }
-        ];
-        setClients(initialClients);
-        db.save('ci_clients', initialClients);
-      }
-
-      setIsLoaded(true);
     };
     loadData();
   }, []);

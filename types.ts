@@ -1,14 +1,16 @@
+
 export enum AppMode {
+  IMAGES = 'images',
   CHAT = 'chat',
   PLANNER = 'planner',
-  SUPPLIERS = 'suppliers',
   GUESTS = 'guests',
-  IMAGES = 'images',
+  SUPPLIERS = 'suppliers',
+  DASHBOARD = 'dashboard',
   ACCOUNT = 'account',
-  DASHBOARD = 'dashboard'
+  UPGRADE = 'upgrade'
 }
 
-export type UserRole = 'Noivo Free' | 'Noivo+' | 'Assessor' | 'Administrador';
+export type UserRole = 'Noivo Free' | 'Noivo+' | 'Assessor Free' | 'Assessor Plus' | 'Assessor Premium' | 'Administrador';
 
 export interface GroundingSource {
   title?: string;
@@ -54,7 +56,7 @@ export interface Invoice {
   status: 'Pago' | 'Pendente' | 'Cancelado';
   planName: string;
   method: string;
-  userId?: string; // Vincula a fatura a um usuário
+  userId?: string;
 }
 
 export interface UserProfile {
@@ -63,12 +65,12 @@ export interface UserProfile {
   email: string;
   password?: string;
   role: UserRole;
-  plan: 'Free' | 'Simplifier' | 'Enterprise';
+  plan: 'Free' | 'Simplifier' | 'Enterprise' | 'Plus' | 'Premium';
   avatar?: string;
   createdAt: number;
   weddingDate?: string;
   totalSpent?: number;
-  assessorId?: string; // Se for noivo, aponta para o ID do assessor
+  assessorId?: string;
 }
 
 export interface ClientData {

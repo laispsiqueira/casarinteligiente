@@ -1,47 +1,48 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useWedding } from '../context/WeddingContext';
-import { BarChart3, Users, CheckSquare, Heart, TrendingUp, Calendar, ArrowUpRight, Clock, Search, ChevronDown, UserCircle } from 'lucide-react';
+import { BarChart3, Users, CheckSquare, Heart, TrendingUp, Calendar, ArrowUpRight, Clock, Search, ChevronDown, User } from 'lucide-react';
 import { UserProfile } from '../types';
 
 const DashboardSection: React.FC = () => {
-  const { guests, tasks, user, availableUsers, originalAdmin } = useWedding();
+  const { tasks, user, availableUsers } = useWedding();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   
-  // O Admin real ou o Assessor podem ver a lista de casais
-  const isAdminOrAssessor = user.role === 'Administrador' || user.role === 'Assessor';
+  const isAdminOrAssessor = user.role === 'Administrador' || user.role.includes('Assessor');
   
-  // Lista de casais que este usuário pode gerenciar
   const manageableCouples = useMemo(() => {
     return availableUsers.filter(u => {
       if (user.role === 'Administrador') return u.role.includes('Noivo');
-      if (user.role === 'Assessor') return u.assessorId === user.id;
+      if (user.role.includes('Assessor')) return u.assessorId === user.id;
       return false;
     });
   }, [availableUsers, user]);
 
-  // Casal selecionado para visualização (default para o primeiro ou o próprio user se for noivo)
-  const [selectedCouple, setSelectedCouple] = useState<UserProfile | null>(() => {
-    if (!isAdminOrAssessor) return user;
-    return manageableCouples[0] || null;
-  });
+  const [selectedCouple, setSelectedCouple] = useState<UserProfile | null>(null);
+
+  // Sincroniza o casal selecionado inicialmente ou quando o usuário do contexto muda
+  useEffect(() => {
+    if (!isAdminOrAssessor) {
+      setSelectedCouple(user);
+    } else if (!selectedCouple || !manageableCouples.find(c => c.id === selectedCouple.id)) {
+      setSelectedCouple(manageableCouples[0] || null);
+    }
+  }, [user, isAdminOrAssessor, manageableCouples]);
 
   const filteredCouples = manageableCouples.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Simulação de variação de dados baseada no casal selecionado 
-  // (Em um app real, buscaríamos do banco pelo ID do casal)
   const coupleStats = useMemo(() => {
     if (!selectedCouple) return null;
     
-    // Seed simples para gerar números diferentes por casal
-    const seed = selectedCouple.id.length;
-    const totalGuests = 100 + (seed * 10);
-    const confirmed = 45 + (seed * 5);
-    const pending = totalGuests - confirmed - (seed * 2);
+    const seed = selectedCouple.id.length + (selectedCouple.name.length * 2);
+    const totalGuests = 100 + (seed % 50);
+    const confirmed = Math.floor(totalGuests * 0.45);
+    const pending = totalGuests - confirmed - Math.floor(seed % 10);
     
-    const totalTasks = 20 + seed;
+    const totalTasks = 20 + (seed % 10);
     const completed = 8 + (seed % 5);
     const progress = (completed / totalTasks) * 100;
 
@@ -52,34 +53,33 @@ const DashboardSection: React.FC = () => {
       totalTasks,
       completed,
       progress,
-      daysToEvent: 120 + (seed * 5),
-      budget: 50000 + (seed * 5000),
-      paid: 20000 + (seed * 2000)
+      daysToEvent: 120 + (seed % 30),
+      budget: 50000 + (seed * 1000),
+      paid: 20000 + (seed * 500)
     };
   }, [selectedCouple]);
 
   if (!selectedCouple && isAdminOrAssessor) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-10">
+      <div className="flex flex-col items-center justify-center h-full text-center p-10 animate-in fade-in">
         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6">
           <Users className="w-10 h-10 text-slate-600" />
         </div>
         <h2 className="text-xl font-serif text-white mb-2">Nenhum casal vinculado</h2>
-        <p className="text-slate-500 max-w-xs">Você ainda não possui noivos vinculados ao seu perfil de assessor.</p>
+        <p className="text-slate-500 max-w-xs text-sm">Você ainda não possui noivos vinculados ao seu perfil.</p>
       </div>
     );
   }
 
   const stats = [
-    { label: 'Convidados Confirmados', value: coupleStats?.confirmed, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { label: 'RSVPs Pendentes', value: coupleStats?.pending, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+    { label: 'Convidados Confirmados', value: coupleStats?.confirmed || 0, icon: Users, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    { label: 'RSVPs Pendentes', value: coupleStats?.pending || 0, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
     { label: 'Progresso do Plano', value: `${Math.round(coupleStats?.progress || 0)}%`, icon: CheckSquare, color: 'text-sky-400', bg: 'bg-sky-500/10' },
-    { label: 'Dias para o Evento', value: coupleStats?.daysToEvent, icon: Calendar, color: 'text-[#ED8932]', bg: 'bg-[#ED8932]/10' },
+    { label: 'Dias para o Evento', value: coupleStats?.daysToEvent || 0, icon: Calendar, color: 'text-[#ED8932]', bg: 'bg-[#ED8932]/10' },
   ];
 
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto w-full px-6 py-10 overflow-hidden">
-      {/* Header com Seletor de Casal */}
+    <div className="flex flex-col h-full max-w-6xl mx-auto w-full px-6 py-10 overflow-hidden animate-in fade-in duration-500">
       <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-4 w-full md:w-auto">
           <div className="space-y-1">
@@ -93,12 +93,12 @@ const DashboardSection: React.FC = () => {
                 onClick={() => setIsSelectorOpen(!isSelectorOpen)}
                 className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl hover:bg-white/10 transition-all min-w-[280px]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#ED8932]/20 flex items-center justify-center text-[#ED8932] font-bold text-xs">
+                <div className="w-8 h-8 rounded-lg bg-[#ED8932]/20 flex items-center justify-center text-[#ED8932] font-bold text-xs shrink-0">
                   {selectedCouple?.name[0]}
                 </div>
-                <div className="text-left flex-1">
+                <div className="text-left flex-1 overflow-hidden">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Visualizando Casal</p>
-                  <p className="text-sm font-bold text-white">{selectedCouple?.name}</p>
+                  <p className="text-sm font-bold text-white truncate">{selectedCouple?.name}</p>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isSelectorOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -129,7 +129,7 @@ const DashboardSection: React.FC = () => {
                           }}
                           className={`w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-all text-left ${selectedCouple?.id === couple.id ? 'bg-[#ED8932]/10 border-l-2 border-[#ED8932]' : ''}`}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-xs">
+                          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-xs shrink-0">
                             {couple.name[0]}
                           </div>
                           <div>
@@ -178,38 +178,36 @@ const DashboardSection: React.FC = () => {
                 <CheckSquare className="w-4 h-4 text-sky-400" /> Status das Tarefas
               </h3>
               <span className="text-xs text-slate-500 font-normal">
-                {coupleStats?.completed}/{coupleStats?.totalTasks} concluídas
+                {coupleStats?.completed || 0}/{coupleStats?.totalTasks || 0} concluídas
               </span>
             </div>
             
             <div className="w-full h-3 bg-white/5 rounded-full mb-8 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-sky-500 to-emerald-500 rounded-full transition-all duration-1000" 
-                style={{ width: `${coupleStats?.progress}%` }} 
+                style={{ width: `${coupleStats?.progress || 0}%` }} 
               />
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-              {/* Tarefas simuladas para o casal */}
-              {tasks.length > 0 ? tasks.slice(0, 6).map((task, i) => (
+              {tasks.length > 0 ? tasks.slice(0, 10).map((task, i) => (
                 <div key={task.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${i < (coupleStats?.completed || 0) ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                    <span className={`text-sm ${i < (coupleStats?.completed || 0) ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${i < (coupleStats?.completed || 0) ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                    <span className={`text-sm truncate ${i < (coupleStats?.completed || 0) ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                       {task.title}
                     </span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold text-slate-600">{task.category}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-600 shrink-0 ml-2">{task.category}</span>
                 </div>
               )) : (
-                <div className="text-center py-10 opacity-20 italic text-sm">Nenhuma tarefa pendente.</div>
+                <div className="text-center py-10 opacity-20 italic text-sm">Carregando tarefas do planejamento...</div>
               )}
             </div>
           </div>
         </div>
 
         <div className="space-y-6 overflow-y-auto no-scrollbar pb-10">
-          {/* Card de Investimento */}
           <div className="glass p-6 rounded-3xl border-white/5">
             <h3 className="text-xs font-bold text-[#ED8932] uppercase tracking-widest mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" /> Investimento Estimado
@@ -223,43 +221,42 @@ const DashboardSection: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex items-center text-emerald-400 text-xs font-bold gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg">
-                  <ArrowUpRight className="w-3 h-3" /> {Math.round((coupleStats?.paid || 0) / (coupleStats?.budget || 1) * 100)}%
+                  <ArrowUpRight className="w-3 h-3" /> {Math.round(((coupleStats?.paid || 0) / (coupleStats?.budget || 1)) * 100)}%
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] text-slate-500">
                   <span>Pago: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(coupleStats?.paid || 0)}</span>
-                  <span>{Math.round((coupleStats?.paid || 0) / (coupleStats?.budget || 1) * 100)}%</span>
+                  <span>{Math.round(((coupleStats?.paid || 0) / (coupleStats?.budget || 1)) * 100)}%</span>
                 </div>
-                <div className="w-full h-1.5 bg-white/5 rounded-full">
+                <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#ED8932] rounded-full transition-all duration-700" 
-                    style={{ width: `${(coupleStats?.paid || 0) / (coupleStats?.budget || 1) * 100}%` }} 
+                    style={{ width: `${((coupleStats?.paid || 0) / (coupleStats?.budget || 1)) * 100}%` }} 
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Card de Status do Assessor */}
           <div className="glass p-6 rounded-3xl border-white/5 bg-gradient-to-br from-[#402005]/40 to-transparent">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-[#ED8932] rounded-lg shadow-lg">
                 <Heart className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-white uppercase tracking-wider">Assessor Online</p>
+                <p className="text-[10px] font-bold text-white uppercase tracking-wider">Status da Assessoria</p>
                 <p className="text-[9px] text-white/50 uppercase">Canal de Suporte Direto</p>
               </div>
             </div>
             <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
               <p className="text-sm text-slate-300 leading-relaxed italic">
-                {user.role === 'Assessor' 
-                  ? "Você está monitorando este casal. Use o chat para enviar novas orientações."
-                  : "Sua assessoria está analisando seus últimos orçamentos. Foco total em Buffet esta semana."}
+                {user.role.includes('Assessor') 
+                  ? "Você está monitorando este casal. Use a consultoria para ajustar detalhes técnicos."
+                  : "Vanessa está analisando seus últimos orçamentos. Foco total em Buffet esta semana."}
               </p>
             </div>
-            {user.role === 'Assessor' && (
+            {user.role.includes('Assessor') && (
               <button className="w-full mt-4 py-2 bg-[#ED8932] text-white rounded-xl text-[10px] font-bold uppercase hover:bg-[#d97c2a] transition-all">
                 Enviar Nota ao Casal
               </button>

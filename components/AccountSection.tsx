@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useWedding } from '../context/WeddingContext';
 import { User, CreditCard, Users, ShieldCheck, Mail, Calendar, Trash2, Edit2, Plus, X, Lock, Eye, ChevronRight, UserPlus } from 'lucide-react';
@@ -10,10 +11,9 @@ const AccountSection: React.FC = () => {
   } = useWedding();
   
   const isAdminReal = (originalAdmin?.role || user.role) === 'Administrador';
-  const isAssessor = user.role === 'Assessor';
+  const isAssessor = user.role.includes('Assessor');
   const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'management'>('profile');
   
-  // CRUD States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
@@ -53,6 +53,10 @@ const AccountSection: React.FC = () => {
   };
 
   const openAddModal = () => {
+    if (user.role === 'Assessor Free' && myCouples.length >= 1) {
+      setMode(AppMode.UPGRADE);
+      return;
+    }
     setEditingUser(null);
     setFormData({ name: '', email: '', weddingDate: '', role: 'Noivo+', plan: 'Simplifier' });
     setIsModalOpen(true);
@@ -158,8 +162,6 @@ const AccountSection: React.FC = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Removido a aba de perfil profissional do assessor conforme solicitado */}
           </div>
         )}
 
@@ -262,20 +264,11 @@ const AccountSection: React.FC = () => {
                   </div>
                 </div>
               ))}
-              
-              {myCouples.length === 0 && (
-                <div className="col-span-full py-20 text-center opacity-30">
-                  <Users className="w-16 h-16 mx-auto mb-4" />
-                  <p className="font-serif">Nenhum noivo encontrado.</p>
-                  <button onClick={openAddModal} className="mt-4 text-[#ED8932] text-sm font-bold underline">Adicionar meu primeiro casal</button>
-                </div>
-              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal for Add/Edit */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="glass w-full max-w-lg rounded-[2.5rem] border-[#ED8932]/20 p-8 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -328,32 +321,16 @@ const AccountSection: React.FC = () => {
                   >
                     <option value="Noivo+">Noivo+</option>
                     <option value="Noivo Free">Noivo Free</option>
-                    {isAdminReal && <option value="Assessor">Assessor</option>}
+                    {isAdminReal && <option value="Assessor Free">Assessor Free</option>}
+                    {isAdminReal && <option value="Assessor Plus">Assessor Plus</option>}
+                    {isAdminReal && <option value="Assessor Premium">Assessor Premium</option>}
                     {isAdminReal && <option value="Administrador">Administrador</option>}
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase px-1">Plano Ativo</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Free', 'Simplifier', 'Enterprise'].map(p => (
-                    <button 
-                      key={p} type="button"
-                      onClick={() => setFormData({...formData, plan: p as any})}
-                      className={`py-3 rounded-xl text-[10px] font-bold uppercase transition-all border ${formData.plan === p ? 'bg-[#ED8932] text-white border-transparent' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div className="pt-4">
-                <button 
-                  type="submit"
-                  className="w-full bg-[#ED8932] text-white py-4 rounded-2xl font-bold shadow-xl shadow-[#ED8932]/20 hover:scale-[1.02] active:scale-95 transition-all"
-                >
+                <button type="submit" className="w-full bg-[#ED8932] text-white py-4 rounded-2xl font-bold shadow-xl shadow-[#ED8932]/20 hover:scale-[1.02] active:scale-95 transition-all">
                   {editingUser ? 'Salvar Alterações' : 'Criar Perfil'}
                 </button>
               </div>
