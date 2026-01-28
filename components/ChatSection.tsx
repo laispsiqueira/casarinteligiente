@@ -1,13 +1,16 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, GeneratedAsset } from '../types';
+import { Message, GeneratedAsset, AppMode } from '../types';
 import { gemini } from '../services/gemini';
 import { useWedding } from '../context/WeddingContext';
-import { Send, Image as ImageIcon, Loader2, X, Globe, Sparkles, Layers } from 'lucide-react';
+import { Send, Image as ImageIcon, Loader2, X, Globe, Sparkles, Layers, RefreshCw, CheckCircle2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const ChatSection: React.FC = () => {
-  const { messages, addMessage, pendingInspiration, setPendingInspiration, assets } = useWedding();
+  const { messages, addMessage, pendingInspiration, setPendingInspiration, assets, setTasks } = useWedding();
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showStudioGallery, setShowStudioGallery] = useState(false);
@@ -49,7 +52,7 @@ const ChatSection: React.FC = () => {
     try {
       const { text, sources } = await gemini.chatStream(
         userMsg.content, 
-        messages, 
+        [...messages, userMsg], 
         tempImage || undefined,
         (chunk) => setStreamingText(chunk)
       );
@@ -76,6 +79,42 @@ const ChatSection: React.FC = () => {
     }
   };
 
+  const syncChatWithPlanner = async () => {
+    if (messages.length < 2 || isSyncing) return;
+    
+    setIsSyncing(true);
+    const toastId = toast.loading('Vanessa está analisando nossa conversa...');
+    
+    try {
+      const extractedTasks = await gemini.extractTasksFromChat(messages);
+      
+      if (extractedTasks.length > 0) {
+        const newTasks = extractedTasks.map((t: any) => ({
+          id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          title: t.title,
+          category: t.category,
+          completed: false
+        }));
+        
+        setTasks(prev => {
+          // Evitar duplicatas baseadas no título
+          const existingTitles = new Set(prev.map(task => task.title.toLowerCase()));
+          const uniqueNewTasks = newTasks.filter(task => !existingTitles.has(task.title.toLowerCase()));
+          return [...uniqueNewTasks, ...prev];
+        });
+        
+        toast.success(`Vanessa adicionou ${newTasks.length} novas tarefas ao seu planejamento!`, { id: toastId });
+      } else {
+        toast.error('Não identifiquei tarefas novas nesta conversa ainda.', { id: toastId });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao sincronizar. Tente novamente mais tarde.', { id: toastId });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -89,6 +128,9 @@ const ChatSection: React.FC = () => {
     setSelectedImage(url);
     setShowStudioGallery(false);
   };
+
+  // Botão aparece apenas se houver pelo menos uma interação (pergunta e resposta)
+  const showSyncButton = messages.length >= 2;
 
   return (
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full px-4 md:px-12 relative bg-[var(--brand-bg)] transition-colors duration-300">
@@ -198,6 +240,27 @@ const ChatSection: React.FC = () => {
       )}
 
       <div className="pb-8 pt-4 z-10 bg-[var(--brand-bg)] transition-colors duration-300">
+        
+        {showSyncButton && (
+          <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <button 
+              onClick={syncChatWithPlanner}
+              disabled={isSyncing}
+              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#ED8932] to-[#402005] text-white rounded-full text-xs font-bold shadow-xl hover:scale-105 transition-all border border-[#ED8932]/30"
+            >
+              {isSyncing ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" /> Transformar conversa em Planejamento
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {selectedImage && (
           <div className="mb-2 relative inline-block animate-in slide-in-from-bottom-2">
             <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-[#ED8932] shadow-2xl">

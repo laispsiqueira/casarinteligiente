@@ -11,8 +11,6 @@ const VANESSA_SYSTEM_INSTRUCTION = `
 
 export class GeminiService {
   private getAI() {
-    // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
-    // Must use new GoogleGenAI({ apiKey: process.env.API_KEY }).
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
@@ -52,7 +50,6 @@ export class GeminiService {
       let sources: GroundingSource[] = [];
 
       for await (const chunk of responseStream) {
-        // Correct method to extract text: use .text property, not .text() method.
         const textChunk = chunk.text || '';
         fullText += textChunk;
         if (onChunk) onChunk(fullText);
@@ -66,6 +63,43 @@ export class GeminiService {
       }
 
       return { text: fullText, sources: sources.length > 0 ? sources : undefined };
+    });
+  }
+
+  async extractTasksFromChat(history: Message[]): Promise<any[]> {
+    return geminiRateLimiter.execute(async () => {
+      const ai = this.getAI();
+      const conversation = history.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Vanessa, analise nossa conversa e extraia uma lista de tarefas (TO-DOs) concretas para o planejamento do casamento baseada no que discutimos. 
+        Converta as necessidades citadas em ações práticas.
+        
+        Conversa:
+        ${conversation}`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: "Título curto e claro da tarefa" },
+                category: { type: Type.STRING, description: "Categoria (Ex: Decoração, Finanças, Local, etc)" }
+              },
+              required: ["title", "category"]
+            }
+          },
+          systemInstruction: VANESSA_SYSTEM_INSTRUCTION
+        }
+      });
+      
+      try {
+        return JSON.parse(response.text || "[]");
+      } catch {
+        return [];
+      }
     });
   }
 
@@ -136,7 +170,6 @@ export class GeminiService {
     }
 
     for (const candidate of response.candidates) {
-      // Fix: Ensure candidate.content and candidate.content.parts exist before accessing
       if (candidate.content && candidate.content.parts) {
         for (const part of candidate.content.parts) {
           if (part.inlineData) {
@@ -145,7 +178,7 @@ export class GeminiService {
         }
       }
     }
-    throw new Error("Falha na geração de imagem: conteúdo não encontrado ou bloqueado por filtros de segurança.");
+    throw new Error("Falha na geração de imagem.");
   }
 }
 
