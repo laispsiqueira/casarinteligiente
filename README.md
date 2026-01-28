@@ -19,48 +19,66 @@ Vanessa não é apenas uma IA; ela é a personificação da elegância e maturid
 
 ---
 
-## 📋 Requisitos do Sistema (User Stories)
+## 🔐 Perfis de Acesso e Regras de Negócio
 
-| Épico | User Story | Descrição | Critérios de Aceite |
-| :--- | :--- | :--- | :--- |
-| **1. Consultoria Vanessa** | **1.1 Conversa Estruturada** | Como noiva, quero conversar com a Vanessa para obter clareza. | Respostas maduras, busca web real e citações de fontes. |
-| | **1.2 Análise Visual** | Como noiva, quero enviar fotos para análise de critério. | Upload de imagem funcional e feedback estético da IA. |
-| **2. Planejamento** | **2.1 Geração de Roteiro** | Como noiva, quero roteiros personalizados por IA. | Geração de tarefas com categoria e persistência na lista. |
-| **3. Fornecedores** | **3.1 Busca Grounded** | Como noiva, quero buscar fornecedores validados. | Uso de Gemini Pro com Google Search e links reais. |
-| **4. Convidados** | **4.1 Gestão de RSVP** | Como noiva, quero gerenciar convidados e WhatsApp. | Contador de convidados e simulação de notificação. |
+O sistema opera sob uma hierarquia rígida de permissões para garantir a privacidade dos dados e o funil de vendas:
+
+### 1. Noivo Free
+- **Foco**: Experimentação e Atração.
+- **Acesso**: Apenas à **Consultoria Vanessa**. Todas as outras abas de ferramentas são ocultas para incentivar o upgrade de plano.
+
+### 2. Noivo+
+- **Foco**: Planejamento Completo.
+- **Acesso**: Consultoria, Estúdio de Design, Planejamento, Convidados e Fornecedores.
+- **Relacionamento**: Pode ser vinculado a um Assessor para acompanhamento compartilhado.
+
+### 3. Assessor (Profissional)
+- **Foco**: Gestão de Clientes.
+- **Acesso**: Todas as ferramentas de planejamento + **Painel de Noivos (Dashboard)**.
+- **Vínculo**: Possui uma visão filtrada "Meus Noivos", onde enxerga apenas os casais vinculados ao seu ID.
+
+### 4. Administrador (Gestão Global)
+- **Foco**: Controle da Plataforma.
+- **Acesso**: Visão total e irrestrita de todos os módulos.
+- **Faturamento**: Acesso exclusivo ao fluxo de caixa global do App.
+- **Gestão de Usuários**: Painel para monitorar todos os cadastros e gerenciar vínculos.
 
 ---
 
-## 📁 Estrutura de Arquivos
+## 🚀 Funcionalidades Especiais
 
-### Configurações
-- `index.html`: Estilos globais (Tailwind), fontes e cores da marca.
-- `metadata.json`: Informações de permissão e metadados da aplicação.
-- `index.tsx`: Ponto de entrada do React e montagem do DOM.
+### 🕵️‍♂️ Sistema de Personificação (Logar Como)
+O Administrador possui a ferramenta de **Impersonation**, permitindo:
+- Acessar o dashboard com a visão exata de qualquer usuário (Noivo ou Assessor).
+- Identificar erros de configuração ou prestar suporte técnico direto na conta do usuário.
+- Um banner de segurança indica quando o modo de visualização está ativo, permitindo o retorno imediato ao perfil Admin.
 
-### Lógica e Tipagem
-- `types.ts`: Definições de interfaces (Mensagens, Tarefas, Convidados) para segurança de código.
-- `services/gemini.ts`: Core da Vanessa. Integração com Google Gemini (Flash, Pro, Imagen).
+### 📊 Painel de Noivos (Dashboard)
+Ferramenta analítica que transforma tarefas e RSVPs em indicadores de saúde do evento (KPIs), disponível para Assessores e Noivos+.
 
-### Componentes de Interface (UI)
-- `App.tsx`: Orquestrador principal de estado e navegação entre módulos.
-- `components/Sidebar.tsx`: Navegação lateral com identidade visual proprietária.
-- `components/ChatSection.tsx`: Interface de consultoria com histórico e upload.
-- `components/PlannerSection.tsx`: Sistema de checklist com sugestões de IA.
-- `components/SupplierSection.tsx`: Buscador de mercado com Google Search Grounding.
-- `components/GuestSection.tsx`: Painel de RSVP e automação de contato.
-- `components/ImageSection.tsx`: Estúdio para materialização de conceitos visuais.
+---
+
+## 📋 Requisitos do Sistema (User Stories)
+
+| Épico | User Story | Descrição | Status |
+| :--- | :--- | :--- | :--- |
+| **1. Consultoria** | **Conversa Grounded** | Chat com Vanessa usando Google Search para dados reais. | ✅ |
+| **2. Design** | **Estúdio de IA** | Geração de imagens e inspirações técnicas com Gemini Image. | ✅ |
+| **3. Governança** | **Perfis & Regras** | Hierarquia entre Noivos, Assessores e Admins. | ✅ |
+| **4. Admin** | **Logar Como** | Capacidade do Admin de "entrar" na conta de outros usuários. | ✅ |
+| **5. Financeiro** | **Faturamento** | Controle de transações e planos mensais no painel Admin. | ✅ |
 
 ---
 
 ## 🚀 Tecnologias Utilizadas
 
 - **Frontend**: React 19, Tailwind CSS.
-- **Iconografia**: Lucide React.
+- **Context API**: Gerenciamento de estado global e lógica de personificação.
 - **Inteligência Artificial**:
-  - `gemini-3-flash-preview`: Chat rápido e tarefas.
-  - `gemini-3-pro-preview`: Pesquisa complexa de fornecedores.
-  - `gemini-2.5-flash-image`: Geração de inspirações visuais.
+  - `gemini-3-flash-preview`: Chat rápido e lógica de tarefas.
+  - `gemini-3-pro-preview`: Pesquisa complexa e profunda de fornecedores.
+  - `gemini-2.5-flash-image`: Geração de inspirações visuais de alta qualidade.
+- **Persistência**: IndexedDB (via `services/db.ts`) para dados offline e locais.
 
 ---
-*Documentação gerada para o projeto Casar Inteligente - Simplifier.*
+*Documentação atualizada para o sistema de gestão Casar Inteligente - Simplifier.*

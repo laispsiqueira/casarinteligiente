@@ -54,6 +54,7 @@ export interface Invoice {
   status: 'Pago' | 'Pendente' | 'Cancelado';
   planName: string;
   method: string;
+  userId?: string; // Vincula a fatura a um usuário
 }
 
 export interface UserProfile {
@@ -67,6 +68,7 @@ export interface UserProfile {
   createdAt: number;
   weddingDate?: string;
   totalSpent?: number;
+  assessorId?: string; // Se for noivo, aponta para o ID do assessor
 }
 
 export interface ClientData {

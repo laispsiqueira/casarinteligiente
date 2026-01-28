@@ -19,48 +19,51 @@ interface WeddingContextType {
   setTheme: (theme: 'dark' | 'light') => void;
   user: UserProfile;
   setUser: (user: UserProfile) => void;
+  originalAdmin: UserProfile | null;
+  setOriginalAdmin: (user: UserProfile | null) => void;
   invoices: Invoice[];
   clients: ClientData[];
   availableUsers: UserProfile[];
+  setAvailableUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
 }
 
 const WeddingContext = createContext<WeddingContextType | undefined>(undefined);
 
-const MOCK_USERS: UserProfile[] = [
+const INITIAL_MOCK_USERS: UserProfile[] = [
   {
     id: 'user_admin',
-    name: 'Ana Beatriz',
-    email: 'ana.beatriz@exemplo.com',
+    name: 'Lais Siqueira',
+    email: 'lais.siqueira@exemplo.com',
     role: 'Administrador',
     plan: 'Enterprise',
-    createdAt: Date.now() - 5000000000,
-    weddingDate: '2025-12-20'
+    createdAt: Date.now() - 10000000000,
   },
   {
-    id: 'user_assessor',
+    id: 'user_assessor_01',
     name: 'Carlos Eduardo',
     email: 'carlos.assessor@exemplo.com',
     role: 'Assessor',
     plan: 'Enterprise',
-    createdAt: Date.now() - 4000000000,
+    createdAt: Date.now() - 5000000000,
   },
   {
-    id: 'user_plus',
+    id: 'user_plus_01',
     name: 'Roberto & Julia',
     email: 'roberto.julia@plus.com',
     role: 'Noivo+',
     plan: 'Simplifier',
     createdAt: Date.now() - 3000000000,
-    weddingDate: '2025-10-15'
+    weddingDate: '2025-10-15',
+    assessorId: 'user_assessor_01'
   },
   {
-    id: 'user_free',
-    name: 'Maria Clara',
-    email: 'maria.clara@free.com',
+    id: 'user_free_01',
+    name: 'Juliana & Felipe',
+    email: 'juliana.felipe@free.com',
     role: 'Noivo Free',
     plan: 'Free',
     createdAt: Date.now() - 1000000000,
-    weddingDate: '2026-05-20'
+    weddingDate: '2026-05-20',
   }
 ];
 
@@ -77,9 +80,25 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (saved as 'dark' | 'light') || 'dark';
   });
 
+  const [availableUsers, setAvailableUsers] = useState<UserProfile[]>(() => {
+    const saved = localStorage.getItem('ci_available_users');
+    return saved ? JSON.parse(saved) : INITIAL_MOCK_USERS;
+  });
+
   const [user, setUser] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('ci_current_user');
-    return saved ? JSON.parse(saved) : MOCK_USERS[0];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Sync with availableUsers in case of edits
+      const updated = availableUsers.find(u => u.id === parsed.id);
+      return updated || parsed;
+    }
+    return availableUsers[0];
+  });
+
+  const [originalAdmin, setOriginalAdmin] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('ci_original_admin');
+    return saved ? JSON.parse(saved) : null;
   });
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -88,6 +107,18 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('ci_current_user', JSON.stringify(user));
   }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('ci_available_users', JSON.stringify(availableUsers));
+  }, [availableUsers]);
+
+  useEffect(() => {
+    if (originalAdmin) {
+      localStorage.setItem('ci_original_admin', JSON.stringify(originalAdmin));
+    } else {
+      localStorage.removeItem('ci_original_admin');
+    }
+  }, [originalAdmin]);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -122,8 +153,8 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setInvoices(savedInvoices);
       } else {
         const initialInvoices: Invoice[] = [
-          { id: 'INV-001', date: Date.now() - 2592000000, amount: 500, status: 'Pago', planName: 'Simplifier', method: 'PIX' },
-          { id: 'INV-002', date: Date.now() - 86400000, amount: 700, status: 'Pendente', planName: 'Mentoria Extra', method: 'Cartão de Crédito' }
+          { id: 'INV-001', userId: 'user_plus_01', date: Date.now() - 2592000000, amount: 500, status: 'Pago', planName: 'Simplifier', method: 'PIX' },
+          { id: 'INV-002', userId: 'user_plus_01', date: Date.now() - 86400000, amount: 700, status: 'Pendente', planName: 'Mentoria Extra', method: 'Cartão de Crédito' }
         ];
         setInvoices(initialInvoices);
         db.save('ci_invoices', initialInvoices);
@@ -133,8 +164,8 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setClients(savedClients);
       } else {
         const initialClients: ClientData[] = [
-          { id: 'C-01', coupleNames: 'Carla & Marcos', status: 'Ativo', contractValue: 2500, nextPayment: Date.now() + 604800000 },
-          { id: 'C-02', coupleNames: 'Juliana & Felipe', status: 'Finalizado', contractValue: 1800 }
+          { id: 'C-01', coupleNames: 'Roberto & Julia', status: 'Ativo', contractValue: 2500, nextPayment: Date.now() + 604800000 },
+          { id: 'C-02', coupleNames: 'Juliana & Felipe', status: 'Ativo', contractValue: 1800 }
         ];
         setClients(initialClients);
         db.save('ci_clients', initialClients);
@@ -145,43 +176,15 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('ci_tasks', JSON.stringify(tasks));
-  }, [tasks, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; localStorage.setItem('ci_tasks', JSON.stringify(tasks)); }, [tasks, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; localStorage.setItem('ci_guests', JSON.stringify(guests)); }, [guests, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; db.save('ci_messages', messages); }, [messages, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; db.save('ci_assets', assets); }, [assets, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; db.save('ci_invoices', invoices); }, [invoices, isLoaded]);
+  useEffect(() => { if (!isLoaded) return; db.save('ci_clients', clients); }, [clients, isLoaded]);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('ci_guests', JSON.stringify(guests));
-  }, [guests, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    db.save('ci_messages', messages);
-  }, [messages, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    db.save('ci_assets', assets);
-  }, [assets, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    db.save('ci_invoices', invoices);
-  }, [invoices, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    db.save('ci_clients', clients);
-  }, [clients, isLoaded]);
-
-  const addMessage = useCallback((msg: Message) => {
-    setMessages(prev => [...prev, msg]);
-  }, []);
-
-  const addAsset = useCallback((asset: GeneratedAsset) => {
-    setAssets(prev => [asset, ...prev]);
-  }, []);
+  const addMessage = useCallback((msg: Message) => { setMessages(prev => [...prev, msg]); }, []);
+  const addAsset = useCallback((asset: GeneratedAsset) => { setAssets(prev => [asset, ...prev]); }, []);
 
   if (!isLoaded) {
     return (
@@ -196,20 +199,10 @@ export const WeddingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <WeddingContext.Provider value={{ 
-      tasks, setTasks, 
-      guests, setGuests, 
-      messages, addMessage, 
-      assets, addAsset,
-      mode, setMode,
-      pendingInspiration,
-      setPendingInspiration,
-      theme,
-      setTheme,
-      user,
-      setUser,
-      invoices,
-      clients,
-      availableUsers: MOCK_USERS
+      tasks, setTasks, guests, setGuests, messages, addMessage, assets, addAsset,
+      mode, setMode, pendingInspiration, setPendingInspiration, theme, setTheme,
+      user, setUser, originalAdmin, setOriginalAdmin, invoices, clients, 
+      availableUsers, setAvailableUsers
     }}>
       {children}
     </WeddingContext.Provider>

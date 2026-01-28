@@ -9,6 +9,7 @@ import GuestSection from './components/GuestSection';
 import ImageSection from './components/ImageSection';
 import AccountSection from './components/AccountSection';
 import DashboardSection from './components/DashboardSection';
+import { LogOut, Eye } from 'lucide-react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
   constructor(props: any) { super(props); this.state = { hasError: false }; }
@@ -19,22 +20,50 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+const ImpersonationBanner: React.FC = () => {
+  const { originalAdmin, setOriginalAdmin, setUser, user } = useWedding();
+  
+  if (!originalAdmin) return null;
+
+  const handleReturn = () => {
+    setUser(originalAdmin);
+    setOriginalAdmin(null);
+  };
+
+  return (
+    <div className="bg-[#ED8932] text-white px-4 py-2 flex items-center justify-between shadow-2xl z-50 animate-in slide-in-from-top duration-300">
+      <div className="flex items-center gap-2 text-xs font-bold">
+        <Eye className="w-4 h-4" />
+        VISUALIZANDO COMO: <span className="underline">{user.name}</span> ({user.role})
+      </div>
+      <button 
+        onClick={handleReturn}
+        className="bg-black/20 hover:bg-black/40 px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all"
+      >
+        <LogOut className="w-3 h-3" /> VOLTAR PARA ADMIN
+      </button>
+    </div>
+  );
+};
+
 const AppContent: React.FC = () => {
   const { mode, setMode } = useWedding();
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--app-bg)] text-[var(--brand-text)] transition-colors duration-300">
-      <Sidebar currentMode={mode} onModeChange={setMode} />
-
-      <main className="flex-1 relative flex flex-col h-full overflow-hidden">
-        {mode === AppMode.CHAT && <ChatSection />}
-        {mode === AppMode.DASHBOARD && <DashboardSection />}
-        {mode === AppMode.PLANNER && <PlannerSection />}
-        {mode === AppMode.SUPPLIERS && <SupplierSection />}
-        {mode === AppMode.GUESTS && <GuestSection />}
-        {mode === AppMode.IMAGES && <ImageSection />}
-        {mode === AppMode.ACCOUNT && <AccountSection />}
-      </main>
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-[var(--app-bg)] text-[var(--brand-text)] transition-colors duration-300">
+      <ImpersonationBanner />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar currentMode={mode} onModeChange={setMode} />
+        <main className="flex-1 relative flex flex-col h-full overflow-hidden">
+          {mode === AppMode.CHAT && <ChatSection />}
+          {mode === AppMode.DASHBOARD && <DashboardSection />}
+          {mode === AppMode.PLANNER && <PlannerSection />}
+          {mode === AppMode.SUPPLIERS && <SupplierSection />}
+          {mode === AppMode.GUESTS && <GuestSection />}
+          {mode === AppMode.IMAGES && <ImageSection />}
+          {mode === AppMode.ACCOUNT && <AccountSection />}
+        </main>
+      </div>
     </div>
   );
 };
