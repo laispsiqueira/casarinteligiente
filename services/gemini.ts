@@ -2,20 +2,28 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { GroundingSource, Message } from "../types";
 
+/**
+ * PROMPT DE SISTEMA: VANESSA
+ * Aqui você define a personalidade, regras e tom de voz da assistente.
+ */
+const VANESSA_SYSTEM_INSTRUCTION = `
+    Você é a Vanessa, a personificação da marca 'Casar Inteligente'.
+    Missão: Oferecer clareza, critério e segurança para noivas que não podem errar.
+    Tom de Voz: Calmo, Firme, Respeitoso, Didático e Adulto.
+    
+    DIRETRIZES:
+    1. Regra de Ouro: "Você vai saber exatamente o que está fazendo — antes de gastar, contratar ou decidir."
+    2. Sempre que analisar uma imagem (inspiração), use critérios técnicos: harmonia, viabilidade técnica e custo-benefício.
+    3. Seja honesta se algo parecer um erro de planejamento ou um gasto desnecessário.
+    4. Preço do produto 'Simplifier': R$ 500 à vista ou R$ 700 em 12x.
+`;
+
 export class GeminiService {
   private getAI() {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
-  private systemInstruction = `
-    Você é a Vanessa, a personificação da marca 'Casar Inteligente'.
-    Missão: Oferecer clareza, critério e segurança para noivas que não podem errar.
-    Tom de Voz: Calmo, Firme, Respeitoso, Didático e Adulto.
-    Regra de Ouro: "Você vai saber exatamente o que está fazendo — antes de gastar, contratar ou decidir."
-    Preço do Simplifier: R$ 500 à vista ou R$ 700 em 12x.
-  `;
-
-  // Novo método para streaming
+  // Método para streaming
   async chatStream(
     prompt: string, 
     history: Message[], 
@@ -24,7 +32,6 @@ export class GeminiService {
   ): Promise<{ text: string, sources?: GroundingSource[] }> {
     const ai = this.getAI();
     
-    // Gestão de Histórico (Sliding Window - últimas 6 mensagens)
     const recentHistory = history.slice(-6).map(m => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }]
@@ -42,7 +49,7 @@ export class GeminiService {
       contents: [...recentHistory, { role: 'user', parts }],
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: this.systemInstruction
+        systemInstruction: VANESSA_SYSTEM_INSTRUCTION
       }
     });
 
@@ -54,7 +61,6 @@ export class GeminiService {
       fullText += textChunk;
       if (onChunk) onChunk(fullText);
       
-      // Captura fontes apenas no último chunk ou se disponíveis
       const chunks = chunk.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
       chunks.forEach((c: any) => {
         if (c.web && !sources.find(s => s.uri === c.web.uri)) {
@@ -85,7 +91,7 @@ export class GeminiService {
               required: ["title", "category"]
             }
           },
-          systemInstruction: this.systemInstruction
+          systemInstruction: VANESSA_SYSTEM_INSTRUCTION
         }
       });
       return JSON.parse(response.text || "[]");
@@ -102,8 +108,8 @@ export class GeminiService {
       contents: `Vanessa, busque opções de ${query} com critério de consciência.`,
       config: {
         tools: [{ googleSearch: {} }],
-        thinkingConfig: { thinkingBudget: 1000 }, // Otimização Arquiteto: Habilitado raciocínio profundo
-        systemInstruction: this.systemInstruction
+        thinkingConfig: { thinkingBudget: 1000 },
+        systemInstruction: VANESSA_SYSTEM_INSTRUCTION
       }
     });
 
@@ -130,8 +136,6 @@ export class GeminiService {
     throw new Error("Falha na geração.");
   }
 
-  // Mantendo a assinatura legada para compatibilidade se necessário, 
-  // mas recomendando chatStream
   async chat(prompt: string, imageBase64?: string) {
     return this.chatStream(prompt, [], imageBase64);
   }
