@@ -1,5 +1,7 @@
 {
   "name": "Casar Inteligente",
   "description": "Seu organizador inteligente para casamento e casa nova.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

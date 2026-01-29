@@ -22,6 +22,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   image?: string;
+  audio?: string;
   timestamp: number;
   sources?: GroundingSource[];
 }

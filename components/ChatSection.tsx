@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message, GeneratedAsset, AppMode } from '../types';
 import { gemini } from '../services/gemini';
 import { useWedding } from '../context/WeddingContext';
-import { Send, Image as ImageIcon, Loader2, X, Globe, Sparkles, Layers, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Send, Image as ImageIcon, Loader2, X, Globe, Sparkles, Layers, RefreshCw, Mic, Square, Volume2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ChatSection: React.FC = () => {
@@ -13,9 +13,15 @@ const ChatSection: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [showStudioGallery, setShowStudioGallery] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if (pendingInspiration) {
@@ -30,22 +36,60 @@ const ChatSection: React.FC = () => {
     }
   }, [messages, isLoading, streamingText]);
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
+        const reader = new FileReader();
+        reader.onloadend = () => setSelectedAudio(reader.result as string);
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      toast.success("Gravando áudio...");
+    } catch (err) {
+      console.error("Erro ao acessar microfone", err);
+      toast.error("Erro ao acessar microfone.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
   const handleSend = async (textOverride?: string) => {
     const finalInput = textOverride || input;
-    if (!finalInput.trim() && !selectedImage) return;
+    if (!finalInput.trim() && !selectedImage && !selectedAudio) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: finalInput || (selectedImage ? "O que você acha desta inspiração?" : ""),
+      content: finalInput || (selectedImage || selectedAudio ? "Analise este conteúdo." : ""),
       image: selectedImage || undefined,
+      audio: selectedAudio || undefined,
       timestamp: Date.now(),
     };
 
     addMessage(userMsg);
     setInput('');
     const tempImage = selectedImage;
+    const tempAudio = selectedAudio;
     setSelectedImage(null);
+    setSelectedAudio(null);
     setIsLoading(true);
     setStreamingText('');
 
@@ -54,6 +98,7 @@ const ChatSection: React.FC = () => {
         userMsg.content, 
         [...messages, userMsg], 
         tempImage || undefined,
+        tempAudio || undefined,
         (chunk) => setStreamingText(chunk)
       );
       
@@ -86,7 +131,8 @@ const ChatSection: React.FC = () => {
     const toastId = toast.loading('Vanessa está analisando nossa conversa...');
     
     try {
-      const extractedTasks = await gemini.extractTasksFromChat(messages);
+      // Fix: Rename extractTasksFromChat to extractTasks to match GeminiService definition
+      const extractedTasks = await gemini.extractTasks(messages);
       
       if (extractedTasks.length > 0) {
         const newTasks = extractedTasks.map((t: any) => ({
@@ -97,7 +143,6 @@ const ChatSection: React.FC = () => {
         }));
         
         setTasks(prev => {
-          // Evitar duplicatas baseadas no título
           const existingTitles = new Set(prev.map(task => task.title.toLowerCase()));
           const uniqueNewTasks = newTasks.filter(task => !existingTitles.has(task.title.toLowerCase()));
           return [...uniqueNewTasks, ...prev];
@@ -124,12 +169,20 @@ const ChatSection: React.FC = () => {
     }
   };
 
+  const handleAudioSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setSelectedAudio(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const selectFromStudio = (url: string) => {
     setSelectedImage(url);
     setShowStudioGallery(false);
   };
 
-  // Botão aparece apenas se houver pelo menos uma interação (pergunta e resposta)
   const showSyncButton = messages.length >= 2;
 
   return (
@@ -146,7 +199,7 @@ const ChatSection: React.FC = () => {
             <div className="max-w-md space-y-4">
               <h2 className="text-4xl font-bold text-[var(--brand-text)] font-serif">Olá, eu sou a Vanessa</h2>
               <p className="text-[var(--brand-text-muted)] text-lg">Sua consultora para um planejamento <b>consciente e seguro</b>.</p>
-              <p className="text-xs text-slate-500 uppercase tracking-widest">Inicie enviando uma pergunta ou uma inspiração</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest">Envie perguntas, imagens ou áudios</p>
             </div>
           </div>
         )}
@@ -166,6 +219,12 @@ const ChatSection: React.FC = () => {
               {msg.image && (
                 <div className="mb-4 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                   <img src={msg.image} alt="Referência" className="max-w-full h-auto object-cover" />
+                </div>
+              )}
+              {msg.audio && (
+                <div className="mb-4 bg-black/20 p-3 rounded-xl flex items-center gap-3">
+                  <Volume2 className="w-5 h-5 text-[#ED8932]" />
+                  <audio src={msg.audio} controls className="h-8 flex-1" />
                 </div>
               )}
               <div className="whitespace-pre-wrap leading-relaxed text-[15px]">{msg.content}</div>
@@ -261,61 +320,85 @@ const ChatSection: React.FC = () => {
           </div>
         )}
 
-        {selectedImage && (
-          <div className="mb-2 relative inline-block animate-in slide-in-from-bottom-2">
-            <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-[#ED8932] shadow-2xl">
-              <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+        <div className="flex gap-2 mb-2 px-1">
+          {selectedImage && (
+            <div className="relative animate-in slide-in-from-bottom-2">
+              <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-[#ED8932] shadow-2xl">
+                <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+              <button onClick={() => setSelectedImage(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors">
+                <X className="w-3 h-3" />
+              </button>
             </div>
-            <button 
-              onClick={() => setSelectedImage(null)}
-              className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        )}
+          )}
+          {selectedAudio && (
+            <div className="relative animate-in slide-in-from-bottom-2">
+              <div className="w-16 h-16 rounded-xl bg-[#402005] border-2 border-[#ED8932] flex items-center justify-center shadow-2xl">
+                <Volume2 className="w-8 h-8 text-[#ED8932]" />
+              </div>
+              <button onClick={() => setSelectedAudio(null)} className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
 
-        <div className="relative gradient-border p-1 flex items-end gap-2 shadow-2xl transition-colors">
+        <div className="relative gradient-border p-1 flex items-end gap-1 shadow-2xl transition-colors">
           <div className="flex items-center">
             <button 
               onClick={() => fileInputRef.current?.click()} 
-              className="p-3.5 text-slate-500 hover:text-[#ED8932] transition-colors"
-              title="Anexar do dispositivo"
+              className="p-2 text-slate-500 hover:text-[#ED8932] transition-colors"
+              title="Anexar Imagem"
             >
-              <ImageIcon className="w-6 h-6" />
+              <ImageIcon className="w-5 h-5" />
             </button>
             <button 
               onClick={() => setShowStudioGallery(!showStudioGallery)} 
-              className={`p-3.5 transition-colors ${showStudioGallery ? 'text-[#ED8932]' : 'text-slate-500 hover:text-[#ED8932]'}`}
-              title="Escolher do Estúdio de Design"
+              className={`p-2 transition-colors ${showStudioGallery ? 'text-[#ED8932]' : 'text-slate-500 hover:text-[#ED8932]'}`}
+              title="Estúdio de Design"
             >
-              <Sparkles className="w-6 h-6" />
+              <Sparkles className="w-5 h-5" />
+            </button>
+            <button 
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              className={`p-2 transition-all ${isRecording ? 'text-rose-500 scale-125 animate-pulse' : 'text-slate-500 hover:text-[#ED8932]'}`}
+              title="Segure para gravar áudio"
+            >
+              {isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
           </div>
           
           <input type="file" ref={fileInputRef} onChange={handleImageSelect} className="hidden" accept="image/*"/>
+          <input type="file" ref={audioInputRef} onChange={handleAudioSelect} className="hidden" accept="audio/*"/>
           
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder={selectedImage ? "O que deseja saber sobre esta inspiração?" : "Como a Vanessa pode te orientar hoje?"}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-[var(--brand-text)] placeholder-slate-600 resize-none py-4 px-2 outline-none"
+            placeholder={isRecording ? "Gravando..." : "Como a Vanessa pode te orientar?"}
+            className="flex-1 bg-transparent border-none focus:ring-0 text-[var(--brand-text)] placeholder-slate-600 resize-none py-3 px-2 outline-none text-sm"
             rows={1}
+            disabled={isRecording}
           />
           
           <button 
             onClick={() => handleSend()} 
-            disabled={isLoading || (!input.trim() && !selectedImage)} 
-            className={`p-3.5 rounded-xl transition-all ${
-              isLoading || (!input.trim() && !selectedImage)
+            disabled={isLoading || isRecording || (!input.trim() && !selectedImage && !selectedAudio)} 
+            className={`p-3 rounded-xl transition-all ${
+              isLoading || isRecording || (!input.trim() && !selectedImage && !selectedAudio)
               ? 'bg-slate-800 text-slate-500'
-              : 'bg-[#ED8932] text-white shadow-lg shadow-[#ED8932]/20 active:scale-95'
+              : 'bg-[#ED8932] text-white shadow-lg active:scale-95'
             }`}
           >
-            <Send className="w-6 h-6" />
+            <Send className="w-5 h-5" />
           </button>
         </div>
+        <p className="text-[10px] text-center mt-2 text-slate-500 uppercase tracking-widest font-bold">
+          {isRecording ? "Solte para finalizar a gravação" : "Segure o microfone para gravar áudio"}
+        </p>
       </div>
     </div>
   );

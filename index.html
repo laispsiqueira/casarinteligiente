@@ -17,15 +17,17 @@
         --glass-bg: rgba(26, 13, 2, 0.7);
         --sidebar-border: rgba(237, 137, 50, 0.1);
         --app-bg: #030712;
+        --card-border: rgba(255, 255, 255, 0.05);
       }
 
       .light-mode {
         --brand-bg: #fdfcfb;
         --brand-text: #1a0d02;
-        --brand-text-muted: #64748b;
-        --glass-bg: rgba(255, 255, 255, 0.8);
+        --brand-text-muted: #475569;
+        --glass-bg: rgba(255, 255, 255, 0.85);
         --sidebar-border: rgba(64, 32, 5, 0.1);
         --app-bg: #f8fafc;
+        --card-border: rgba(64, 32, 5, 0.1);
       }
 
       body {
@@ -42,6 +44,7 @@
         background: var(--glass-bg);
         backdrop-filter: blur(20px);
         border: 1px solid var(--sidebar-border);
+        transition: background 0.3s ease, border 0.3s ease;
       }
       .gradient-border {
         position: relative;
@@ -79,9 +82,9 @@
       }
       .light-mode .bg-mesh {
         background-image: 
-          radial-gradient(at 0% 0%, hsla(28, 92%, 95%, 0.4) 0px, transparent 50%),
-          radial-gradient(at 100% 0%, hsla(30, 88%, 90%, 0.4) 0px, transparent 50%),
-          radial-gradient(at 50% 50%, hsla(28, 92%, 85%, 0.2) 0px, transparent 80%);
+          radial-gradient(at 0% 0%, hsla(28, 92%, 95%, 0.6) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, hsla(30, 88%, 90%, 0.6) 0px, transparent 50%),
+          radial-gradient(at 50% 50%, hsla(28, 92%, 85%, 0.3) 0px, transparent 80%);
       }
       ::-webkit-scrollbar {
         width: 6px;
